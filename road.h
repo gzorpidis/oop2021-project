@@ -14,7 +14,7 @@ class Toll {
         int K;
     public:
         Toll(int k): K(k) {
-            cout << "Tool ";
+            cout << "Toll ";
         }
 };
 
@@ -47,9 +47,10 @@ class Car {
 
 class Entry {
     private:
+        // Could also be one array, i.e. Toll** tolls;
         Toll_Electronic **toll_elec;
         Toll_Cashier **toll_cash;
-        int name;
+        int id;
         int K;
     public:
         Entry(int, int);
@@ -63,13 +64,19 @@ class Segment {
         int curr_cars; // 
         int capacity;
         Entry *entry;
-        Segment *prev_segment; //
-        Segment *next_segment; //
+        Segment *prev_segment;
+        Segment *next_segment;
         vector<Car> cars;
         // list<Car> list_of_cars;
 
     public:
         Segment(int, int, int);
+        ~Segment();
+        // Functions to connect the pointers of the segments, after they have all been created!
+        void connect_to_previous(Segment* to_prev);
+        void connect_to_next(Segment* to_next);
+
+
         void enter(Car);
         void exit(Car);
         void pass();
@@ -77,6 +84,10 @@ class Segment {
         void operate();
 
         void print();
+
+        // Test functions to iterate a segment using the pointers
+        void iterate_segment();
+        void iterate_segment_bw();
 };
 
 
