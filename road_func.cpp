@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string.h>
 #include "road.h"
+#include <stdlib.h>     /* srand, rand */
+
 
 using namespace std;
 
@@ -27,24 +29,31 @@ Entry::Entry(int k, int i): K(k), id(i) {
 } 
 
 
-Segment::Segment(int k, int cap, int i): 
-capacity(cap), junction(i), 
+Segment::Segment(int k, int cap, int i, int nsegs): 
+capacity(cap), junction(i), no_of_segs(nsegs),
 // To start with, the segment is not connected with any other segment
 prev_segment(NULL), next_segment(NULL)
 {
   cout << junction << " segment Constructed\n";
   // K for the tolls, i-> position of the segment(and consequently the junction)
-  entry = new Entry(k, i);
+  // entry = new Entry(k, i);
 
   // Create the starting cars
-  for(int i = 0; i < capacity; i++) {
 
+  allocate_cars(capacity);  // Allocate capacity-space for the cars
+  for(int j = 0; j < capacity; j++) {
+    // rand() % (max_number + 1 - minimum_number) + minimum_number
+    // exit specifies the node in which the car will exit (includes the last for now)
+    int exit = rand() % (no_of_segs + 1 - (junction+1)) + (junction+1);
+    cout << "Exit chosen:" << exit << endl;
+    Car to_enter(j, exit);
+    cars.push_back(to_enter); // push the car into the vector, calls copy constructor
   }
   // print();
 }
 
 Segment::~Segment() {
-  delete entry; // Deallocate the entry
+  // delete entry; // Deallocate the entry
 }
 
 
@@ -58,13 +67,14 @@ segment( new Segment*[NSegs]) {
     for(int i = 0; i < NSegs; i++) {
         int cap;
         
-        cap = rand() % 10; // To be changed to:
+        // cap = rand() % 10; // To be changed to:
+        cap = 4;
         // cout << "Give capacity for segment no: " << i + 1 << endl;
         // cin >> cap;
 
         // Create segment number i, with capacity cap, connected to the junction i
         // So the first segment [0] -> junction number: 0 , etc...
-        segment[i] = new Segment(K, cap, i);
+        segment[i] = new Segment(K, cap, i, NSegs);
         
         // list<Car> list_of_cars;
 
@@ -96,6 +106,13 @@ segment( new Segment*[NSegs]) {
     }
 
 } 
+
+Road::~Road() {
+  for(int i = 0; i < NSegs; i++)
+    delete segment[i];
+  
+  delete[] segment;
+}
 
 
 ////////////////////////////////////////////

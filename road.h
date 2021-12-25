@@ -42,6 +42,13 @@ class Car {
         int exit_segment;
     public:
         Car(int ,int);
+        Car(const Car& temp) : curr_segment(temp.curr_segment), ready(temp.ready), exit_segment(temp.exit_segment) {
+          cout << "Called the copy constructor for the Car!" << endl;
+        }
+
+        ~Car() {
+
+        };
 };
 
 
@@ -67,10 +74,11 @@ class Segment {
         Segment *prev_segment;
         Segment *next_segment;
         vector<Car> cars;
+        int no_of_segs;
         // list<Car> list_of_cars;
 
     public:
-        Segment(int, int, int);
+        Segment(int, int, int, int);
         ~Segment();
         // Functions to connect the pointers of the segments, after they have all been created!
         void connect_to_previous(Segment* to_prev);
@@ -88,6 +96,8 @@ class Segment {
         // Test functions to iterate a segment using the pointers
         void iterate_segment();
         void iterate_segment_bw();
+		    void allocate_cars(int n) { cars.reserve(n); };
+
 };
 
 
@@ -98,5 +108,6 @@ class Road {
         int total_cars; 
     public:
         Road(int, int, int); 
+        ~Road();
         void operate();
 };
