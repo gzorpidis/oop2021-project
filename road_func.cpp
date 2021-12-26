@@ -2,30 +2,85 @@
 #include <string.h>
 #include "road.h"
 #include <stdlib.h>     /* srand, rand */
-
+#include <cassert>
 
 using namespace std;
 
+Car::Car(int i, int j): curr_segment(i), exit_segment(j), ready(false) {}
 
-Car::Car(int i, int j): curr_segment(i), exit_segment(j), ready(0) {}
+// Get if a car is ready to leave its segment
+bool Car::is_ready() const { return ready; }
+
+// Get the index of the car's exit segment
+int Car::get_exit_segment() const { return exit_segment; }
+
+// Function to make a car's ready flag true, so it can leave the segment 
+void Car::make_ready() { ready = true; }
+
+// The segment which will create its entry will set the total number of tolls
+Entry::Entry(int k, int i, int segments, int toll_number): K(k), id(i), no_of_tolls(toll_number) {
+    
+
+    // Make sure toll_numer is not 1, otherwise we will encounter an error because we want at least one of which (rand() will throw exception)
+    assert(toll_number != 1);
+
+    // Get the number of tolls with employees, and electronic
+    // Rands are set in a way, such that at least one of them has at least one, so:
+    // Employees in range: [1, toll_number - 1], so we can have at least 1 electronic and vise versa
+
+    int w_employees = rand() % (toll_number - 1) + 1;
+    int elec = toll_number - w_employees;
+
+    assert(w_employees != 0);
+    assert(elec != 0);
 
 
-Entry::Entry(int k, int i): K(k), id(i) { 
-    // toll construction
-    // If we have one Toll**, we could say:
-    // tolls (new Toll*[int number_of_tolls]) , where no_of_tolls is given
-    int r1 = rand() % 5 + 1;
-    toll_cash = new Toll_Cashier*[r1];
-    int r2 = rand() % 4 + 1;
-    toll_elec = new Toll_Electronic*[r2];
+    cout << "Creating an entry with total: " << toll_number << " tolls, out\
+    of which: " << w_employees << " have employees and: " << elec << " are \
+    electronic!" << endl;
 
-    for(int i = 0; i < r1; i++) {
-        toll_cash[i] = new Toll_Cashier(K);
-    }
+    // if we have K = 20
+    // and we then have 4 tolls with employees we will have to have 20/4 = 5
+    // in each toll, so if K are needed we can provide them
+    // BUT if all enter, we will change K to K + 1 => 21 so now having 4
+    // in each IS NOT SUFFICIENT!! we should be able to fix that!
+    int cars_per_toll_cashiers;
+    int cars_per_toll_elec;
 
-    for(int i = 0; i < r2; i++) {
-        toll_elec[i] = new Toll_Electronic(2*K);
-    }
+    if (K % w_employees == 0)
+      cars_per_toll_cashiers = K / w_employees;
+    else
+      cars_per_toll_cashiers = K / w_employees + 1;
+
+    if (2 * K % elec == 0)
+      cars_per_toll_elec = (2*K) / elec;
+    else
+      cars_per_toll_elec = (2*K) / elec + 1;
+    
+    cout << "cars_per_toll (cashiers) = " << K << " / " << w_employees << " = " << cars_per_toll_cashiers << endl;
+
+    cout << "cars_per_toll (elec) = " << 2*K << " / " << elec << " = " << cars_per_toll_elec << endl;
+
+    // create toll_number total tolls to begin with
+    tolls = new Toll*[toll_number]; 
+    
+
+    // Will have to create cars that have current segment = -1
+    // because they have not entered the highway yet, but they will
+    // have to choose in which entry to leave, so they need
+    // the segment in which they are created, as well as the total no of segments
+
+    // Fill up the tolls
+    for(int i = 0; i < w_employees; i++)
+      tolls[i] = new Toll_Cashier(K, cars_per_toll_cashiers,id, segments);
+    
+    cout << endl;
+    
+    for(int i = w_employees; i < toll_number; i++)
+      tolls[i] = new Toll_Electronic(2* K, cars_per_toll_elec,id, segments);
+
+    cout << endl;
+
 } 
 
 
@@ -35,12 +90,20 @@ capacity(cap), junction(i), no_of_segs(nsegs),
 prev_segment(NULL), next_segment(NULL)
 {
   cout << junction << " segment Constructed\n";
-  // K for the tolls, i-> position of the segment(and consequently the junction)
-  // entry = new Entry(k, i);
+
+  // At least 2, because we need at least one of each!
+  int no_of_tolls = rand() % 10 + 2;  
+
+  // K-> the tolls, 
+  // i-> position of the segment(and consequently the junction), 
+  // the number of segments so the cars inside the entry can select the correct exit
+  // and no_of_tolls for the entry
+  entry = new Entry(k, i, no_of_segs, no_of_tolls);
 
   // Create the starting cars
 
   allocate_cars(capacity);  // Allocate capacity-space for the cars
+  cout << "Now creating cars inside the road segment:" << endl;
   for(int j = 0; j < capacity; j++) {
     // rand() % (max_number + 1 - minimum_number) + minimum_number
     // exit specifies the node in which the car will exit (includes the last for now)
@@ -49,11 +112,10 @@ prev_segment(NULL), next_segment(NULL)
     Car to_enter(j, exit);
     cars.push_back(to_enter); // push the car into the vector, calls copy constructor
   }
-  // print();
 }
 
 Segment::~Segment() {
-  // delete entry; // Deallocate the entry
+  delete entry; // Deallocate the entry
 }
 
 
@@ -62,13 +124,12 @@ segment( new Segment*[NSegs]) {
     cout << "Road Constructed\n";
 
     total_cars = 0;
-    // segment = new Segment*[NSegs];
 
     for(int i = 0; i < NSegs; i++) {
         int cap;
         
-        // cap = rand() % 10; // To be changed to:
         cap = 4;
+        // To be changed to:
         // cout << "Give capacity for segment no: " << i + 1 << endl;
         // cin >> cap;
 
@@ -76,18 +137,6 @@ segment( new Segment*[NSegs]) {
         // So the first segment [0] -> junction number: 0 , etc...
         segment[i] = new Segment(K, cap, i, NSegs);
         
-        // list<Car> list_of_cars;
-
-        // construct cars to fill the segments
-        // int cars = rand() % cap + 1;
-        // for(int j = 0; j < cars; j++) {
-        //     Car *car = new Car(i, rand() % NSegs);
-        // rand() % (max_number + 1 - minimum_number) + minimum_number
-        // Car(i, rand() % (NSegs + 1 -  ))
-        //     segment[i]->enter(*car); 
-        // }
-
-        // total_cars += cars;
     }
 
     // After we have created the Segments, connect them
@@ -105,8 +154,13 @@ segment( new Segment*[NSegs]) {
       }
     }
 
+    // Quick test for the segments
+    segment[NSegs-1]->makeRandomReady();
+    segment[NSegs - 1]->exit();
+
 } 
 
+// To delete the road, delete the Segments
 Road::~Road() {
   for(int i = 0; i < NSegs; i++)
     delete segment[i];
@@ -123,16 +177,34 @@ void Road::operate() {
 }
 
 
-void Segment::enter(Car car) {
+void Segment::enter() {
+
+    // for( auto it = cars.begin(); it != cars.end(); it++)
+      
     // to enter ..
     
     // list_of_cars->push_back(car);
-    curr_cars++;   // total?
+    // curr_cars++;   // total?
 }
 
-void Segment::exit(Car car) {
+void Segment::exit() {
     // to remove ..
-    curr_cars--;   // total?
+
+    // Gets the cars in the segment, iterate and find them
+    // which want to exit at the next node
+    cout << "Exiting cars from segment: " << junction << endl;
+    for(auto it = cars.begin(); it != cars.end(); ) {
+      if (it->is_ready() && it->get_exit_segment() == junction + 1 ) {
+        int size_before_removal = cars.size();
+        it = cars.erase(it);  // Removed car
+        assert(size_before_removal == cars.size() + 1); // Assert changes where made
+        
+        cout << "Removed car successfully!" << endl;
+      } else {
+        ++it;
+      }
+    }
+    // curr_cars--;   // total?
 }
 
 void Segment::pass() {
@@ -180,4 +252,33 @@ void Segment::iterate_segment() {
   }
   cout << "Currently on segment: " << junction + 1 << endl;
   next_segment->iterate_segment();
+}
+
+static double r2() {
+	return (double)rand() / (double)RAND_MAX;
+}
+
+
+void Segment::makeRandomReady() {
+  for(auto it = cars.begin(); it != cars.end(); it++) {
+    if (r2() <= 0.5) {
+      cout << "Random car made ready to leave!" << endl;
+      it->make_ready();
+    }
+  }
+}
+
+
+Toll::Toll(int k, int in_each_toll, int id, int segments): K(k), max(in_each_toll), counter(0) {
+    cout << "Toll(" << max << ")";
+    cars.reserve(max);  // reserve that many spots to begin with
+
+    for(int i = 0; i < max; i++) {
+      int exit = rand() % (segments + 1 - (id+1)) + (id+1);
+      cout << "Exit chose by car in toll:" << exit << endl;
+      Car to_enter(-1, exit);
+      cars.push_back(to_enter);   
+      counter++;       
+    }
+    assert(counter == max);
 }
